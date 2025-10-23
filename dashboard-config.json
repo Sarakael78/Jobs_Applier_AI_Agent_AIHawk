@@ -1,0 +1,6 @@
+{
+  "port": 50011,
+  "description": "AI-powered LinkedIn job application automation",
+  "type": "shell",
+  "entry_point": "./start.sh"
+}
