@@ -1,103 +1,130 @@
 personal_information:
-  name: "[Your name]"
-  surname: "[Your surname]"
-  dateOfBirth: "[Your Date of Birth]"
-  country: "[Your country]"
-  city: "[Your city]"
-  address: "[Your address]"
-  phonePrefix: "[Your phone number prefix]"
-  phone: "[Your phone number]"
-  email: "[Your email]"
-  github: "[Link]"
-  linkedin: "[Link]"
-
-self_identification:
-  gender: "[Specific gender identification]"
-  pronouns: "[Your Pronouns]"
-  veteran: [true/false]
-  disability: [true/false]
-  ethnicity: "[Specify ethnicity]"
-
-legal_authorization:
-  euWorkAuthorization: [true/false]
-  usWorkAuthorization: [true/false]
-  requiresUsVisa: [true/false]
-  legallyAllowedToWorkInUs: [true/false]
-  requiresUsSponsorship: [true/false]
-  requiresEuVisa: [true/false]
-  legallyAllowedToWorkInEu: [true/false]
-  requiresEuSponsorship: [true/false]
-
-work_preferences:
-  remoteWork: [true/false]
-  inPersonWork: [true/false]
-  openToRelocation: [true/false]
-  willingToCompleteAssessments: [true/false]
-  willingToUndergoDrugTests: [true/false]
-  willingToUndergoBackgroundChecks: [true/false]
+  name: "[Your Name]"
+  surname: "[Your Surname]"
+  date_of_birth: "[Your Date of Birth]"
+  country: "[Your Country]"
+  city: "[Your City]"
+  address: "[Your Address]"
+  zip_code: "[Your zip code]"
+  phone_prefix: "[Your Phone Prefix]"
+  phone: "[Your Phone Number]"
+  email: "[Your Email Address]"
+  github: "[Your GitHub Profile URL]"
+  linkedin: "[Your LinkedIn Profile URL]"
 
 education_details:
-  - degree: "[Bachelor's/Master's/Ph.D.]"
-    university: "[Name of University]"
-    gpa: "[Your GPA]"
-    graduationYear: "[Year of Graduation]"
-    fieldOfStudy: "[Your Field of Study]"
-    skillsAcquired:
-      leadership: "[Years]"
-      problemSolving: "[Years]"
-      criticalThinking: "[Years]"
-      adaptability: "[Years]"
-      perfectionism: "[Years]"
-      yourSkill: "[Years]"
-      yourSkill: "[Years]"
+  - education_level: "[Your Education Level]"
+    institution: "[Your Institution]"
+    field_of_study: "[Your Field of Study]"
+    final_evaluation_grade: "[Your Final Evaluation Grade]"
+    start_date: "[Start Date]"
+    year_of_completion: "[Year of Completion]"
+    exam:
+      exam_name_1: "[Grade]"
+      exam_name_2: "[Grade]"
+      exam_name_3: "[Grade]"
+      exam_name_4: "[Grade]"
+      exam_name_5: "[Grade]"
+      exam_name_6: "[Grade]"
 
 experience_details:
-  - position: "[Job Title]"
+  - position: "[Your Position]"
     company: "[Company Name]"
-    employmentPeriod: "[Month, Year] - [Month, Year]"
-    location: "[City, Country]"
-    industry: "[Industry of the Company]"
-    keyResponsibilities:
-      responsibility1: "[Description of responsibility1]"
-      responsibility2: "[Description of responsibility1]"
-      responsibility3: "[Description of responsibility1]"
-    skillsAcquired:
-      leadership: "[Years]"
-      problemSolving: "[Years]"
-      criticalThinking: "[Years]"
-      adaptability: "[Years]"
-      perfectionism: "[Years]"
-      yourSkill: "[Years]"
-      yourSkill: "[Years]"
+    employment_period: "[Employment Period]"
+    location: "[Location]"
+    industry: "[Industry]"
+    key_responsibilities:
+      - responsibility_1: "[Responsibility Description]"
+      - responsibility_2: "[Responsibility Description]"
+      - responsibility_3: "[Responsibility Description]"
+    skills_acquired:
+      - "[Skill]"
+      - "[Skill]"
+      - "[Skill]"
+
+  - position: "[Your Position]"
+    company: "[Company Name]"
+    employment_period: "[Employment Period]"
+    location: "[Location]"
+    industry: "[Industry]"
+    key_responsibilities:
+      - responsibility_1: "[Responsibility Description]"
+      - responsibility_2: "[Responsibility Description]"
+      - responsibility_3: "[Responsibility Description]"
+    skills_acquired:
+      - "[Skill]"
+      - "[Skill]"
+      - "[Skill]"
 
 projects:
-  project1: "[Description of significant projects you've worked on + if available repo link]"
-  project2: "[Description of significant projects you've worked on + if available repo link]"
+  - name: "[Project Name]"
+    description: "[Project Description]"
+    link: "[Project Link]"
 
-availability:
-  noticePeriod: "[Specify notice period]"
+  - name: "[Project Name]"
+    description: "[Project Description]"
+    link: "[Project Link]"
 
-salary_expectations:
-  salaryRangeUSD: "[Specify your salary expectations in USD]"
+achievements:
+  - name: "[Achievement Name]"
+    description: "[Achievement Description]"
+  - name: "[Achievement Name]"
+    description: "[Achievement Description]"
 
 certifications:
-  - "[Certification 1]"
-  - "[Certification 2]"
-  - "[Certification 3]"
-
-skills:
-  problemSolving: "[Years]"
-  criticalThinking: "[Years]"
-  adaptability: "[Years]"
-  perfectionism: "[Years]"
-  yourSkill: "[Years]"
-  yourSkill: "[Years]"
+  - name: "[Certification Name]"
+    description: "[Certification Description]"
+  - name: "[Certification Name]"
+    description: "[Certification Description]"
 
 languages:
-  - language: "Italian"
-    proficiency: "Native"
-  - language: "English"
-    proficiency: "Professional"
+  - language: "[Language]"
+    proficiency: "[Proficiency Level]"
+  - language: "[Language]"
+    proficiency: "[Proficiency Level]"
 
 interests:
-  - "[List any hobbies or interests relevant to your professional profile]"
+  - "[Interest]"
+  - "[Interest]"
+  - "[Interest]"
+
+availability:
+  notice_period: "[Notice Period]"
+
+salary_expectations:
+  salary_range_usd: "[Salary Range]"
+
+self_identification:
+  gender: "[Gender]"
+  pronouns: "[Pronouns]"
+  veteran: "[Yes/No]"
+  disability: "[Yes/No]"
+  ethnicity: "[Ethnicity]"
+
+
+legal_authorization:
+  eu_work_authorization: "[Yes/No]"
+  us_work_authorization: "[Yes/No]"
+  requires_us_visa: "[Yes/No]"
+  requires_us_sponsorship: "[Yes/No]"
+  requires_eu_visa: "[Yes/No]"
+  legally_allowed_to_work_in_eu: "[Yes/No]"
+  legally_allowed_to_work_in_us: "[Yes/No]"
+  requires_eu_sponsorship: "[Yes/No]"
+  canada_work_authorization: "[Yes/No]"
+  requires_canada_visa: "[Yes/No]"
+  legally_allowed_to_work_in_canada: "[Yes/No]"
+  requires_canada_sponsorship: "[Yes/No]"
+  uk_work_authorization: "[Yes/No]"
+  requires_uk_visa: "[Yes/No]"
+  legally_allowed_to_work_in_uk: "[Yes/No]"
+  requires_uk_sponsorship: "[Yes/No]"
+
+
+work_preferences:
+  remote_work: "[Yes/No]"
+  in_person_work: "[Yes/No]"
+  open_to_relocation: "[Yes/No]"
+  willing_to_complete_assessments: "[Yes/No]"
+  willing_to_undergo_drug_tests: "[Yes/No]"
+  willing_to_undergo_background_checks: "[Yes/No]"

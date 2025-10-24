@@ -1,219 +1,565 @@
-import re
+import base64
+import sys
 from pathlib import Path
+import traceback
+from typing import List, Optional, Tuple, Dict
+
+import click
+import inquirer
 import yaml
 from selenium import webdriver
+from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.chrome.service import Service as ChromeService
 from webdriver_manager.chrome import ChromeDriverManager
-import click
+import re
+from src.libs.resume_and_cover_builder import ResumeFacade, ResumeGenerator, StyleManager
+from src.resume_schemas.job_application_profile import JobApplicationProfile
+from src.resume_schemas.resume import Resume
+from src.logging import logger
+from src.utils.chrome_utils import init_browser
+from src.utils.constants import (
+    PLAIN_TEXT_RESUME_YAML,
+    SECRETS_YAML,
+    WORK_PREFERENCES_YAML,
+)
+# from ai_hawk.bot_facade import AIHawkBotFacade
+# from ai_hawk.job_manager import AIHawkJobManager
+# from ai_hawk.llm.llm_manager import GPTAnswerer
 
-from utils import chromeBrowserOptions
-from gpt import GPTAnswerer
-from linkedIn_authenticator import LinkedInAuthenticator
-from linkedIn_bot_facade import LinkedInBotFacade
-from linkedIn_job_manager import LinkedInJobManager
-from resume import Resume
 
 class ConfigError(Exception):
-    """Custom exception for configuration errors."""
+    """Custom exception for configuration-related errors."""
     pass
 
+
 class ConfigValidator:
+    """Validates configuration and secrets YAML files."""
+
+    EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
+    REQUIRED_CONFIG_KEYS = {
+        "remote": bool,
+        "experience_level": dict,
+        "job_types": dict,
+        "date": dict,
+        "positions": list,
+        "locations": list,
+        "location_blacklist": list,
+        "distance": int,
+        "company_blacklist": list,
+        "title_blacklist": list,
+    }
+    EXPERIENCE_LEVELS = [
+        "internship",
+        "entry",
+        "associate",
+        "mid_senior_level",
+        "director",
+        "executive",
+    ]
+    JOB_TYPES = [
+        "full_time",
+        "contract",
+        "part_time",
+        "temporary",
+        "internship",
+        "other",
+        "volunteer",
+    ]
+    DATE_FILTERS = ["all_time", "month", "week", "24_hours"]
+    APPROVED_DISTANCES = {0, 5, 10, 25, 50, 100}
+
     @staticmethod
     def validate_email(email: str) -> bool:
-        email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-        return re.match(email_regex, email) is not None
-    
+        """Validate the format of an email address."""
+        return bool(ConfigValidator.EMAIL_REGEX.match(email))
+
     @staticmethod
-    def validate_config(config_yaml_path: Path) -> dict:
+    def load_yaml(yaml_path: Path) -> dict:
+        """Load and parse a YAML file."""
         try:
-            with open(config_yaml_path, 'r') as stream:
-                parameters = yaml.safe_load(stream)
+            with open(yaml_path, "r") as stream:
+                return yaml.safe_load(stream)
         except yaml.YAMLError as exc:
-            raise ConfigError(f"Error reading config file {config_yaml_path}: {exc}")
+            raise ConfigError(f"Error reading YAML file {yaml_path}: {exc}")
         except FileNotFoundError:
-            raise ConfigError(f"Config file not found: {config_yaml_path}")
-        
+            raise ConfigError(f"YAML file not found: {yaml_path}")
 
-        # Validate 'remote'
-        if 'remote' not in parameters or not isinstance(parameters['remote'], bool):
-            raise ConfigError(f"'remote' in config file {config_yaml_path} must be a boolean value.")
-
-        # Validate 'experienceLevel'
-        experience_level = parameters.get('experienceLevel', {})
-        valid_experience_levels = [
-            'internship', 'entry', 'associate', 'mid-senior level', 'director', 'executive'
-        ]
-        for level in valid_experience_levels:
-            if level not in experience_level or not isinstance(experience_level[level], bool):
-                raise ConfigError(f"Experience level '{level}' must be a boolean value in config file {config_yaml_path}.")
-
-        # Validate 'jobTypes'
-        job_types = parameters.get('jobTypes', {})
-        valid_job_types = [
-            'full-time', 'contract', 'part-time', 'temporary', 'internship', 'other', 'volunteer'
-        ]
-        for job_type in valid_job_types:
-            if job_type not in job_types or not isinstance(job_types[job_type], bool):
-                raise ConfigError(f"Job type '{job_type}' must be a boolean value in config file {config_yaml_path}.")
-
-        # Validate 'date'
-        date = parameters.get('date', {})
-        valid_dates = ['all time', 'month', 'week', '24 hours']
-        for date_filter in valid_dates:
-            if date_filter not in date or not isinstance(date[date_filter], bool):
-                raise ConfigError(f"Date filter '{date_filter}' must be a boolean value in config file {config_yaml_path}.")
-
-        # Validate 'positions'
-        positions = parameters.get('positions', [])
-        if not isinstance(positions, list) or not all(isinstance(pos, str) for pos in positions):
-            raise ConfigError(f"'positions' must be a list of strings in config file {config_yaml_path}.")
-        
-        # Validate 'locations'
-        locations = parameters.get('locations', [])
-        if not isinstance(locations, list) or not all(isinstance(loc, str) for loc in locations):
-            raise ConfigError(f"'locations' must be a list of strings in config file {config_yaml_path}.")
-
-        # Validate 'distance'
-        approved_distances = {0, 5, 10, 25, 50, 100}
-        distance = parameters.get('distance')
-        if distance not in approved_distances:
-            raise ConfigError(f"Invalid distance value in config file {config_yaml_path}. Must be one of: {approved_distances}")
-
-        # Validate 'companyBlacklist'
-        company_blacklist = parameters.get('companyBlacklist', [])
-        if not isinstance(company_blacklist, list) or not all(isinstance(comp, str) for comp in company_blacklist):
-            company_blacklist = []
-        parameters['companyBlacklist'] = company_blacklist
-
-        # Validate 'titleBlacklist'
-        title_blacklist = parameters.get('titleBlacklist', [])
-        if not isinstance(title_blacklist, list) or not all(isinstance(word, str) for word in title_blacklist):
-            title_blacklist = []
-        parameters['titleBlacklist'] = title_blacklist
+    @classmethod
+    def validate_config(cls, config_yaml_path: Path) -> dict:
+        """Validate the main configuration YAML file."""
+        parameters = cls.load_yaml(config_yaml_path)
+        # Check for required keys and their types
+        for key, expected_type in cls.REQUIRED_CONFIG_KEYS.items():
+            if key not in parameters:
+                if key in ["company_blacklist", "title_blacklist", "location_blacklist"]:
+                    parameters[key] = []
+                else:
+                    raise ConfigError(f"Missing required key '{key}' in {config_yaml_path}")
+            elif not isinstance(parameters[key], expected_type):
+                if key in ["company_blacklist", "title_blacklist", "location_blacklist"] and parameters[key] is None:
+                    parameters[key] = []
+                else:
+                    raise ConfigError(
+                        f"Invalid type for key '{key}' in {config_yaml_path}. Expected {expected_type.__name__}."
+                    )
+        cls._validate_experience_levels(parameters["experience_level"], config_yaml_path)
+        cls._validate_job_types(parameters["job_types"], config_yaml_path)
+        cls._validate_date_filters(parameters["date"], config_yaml_path)
+        cls._validate_list_of_strings(parameters, ["positions", "locations"], config_yaml_path)
+        cls._validate_distance(parameters["distance"], config_yaml_path)
+        cls._validate_blacklists(parameters, config_yaml_path)
         return parameters
 
-    @staticmethod
-    def validate_secrets(secrets_yaml_path: Path) -> tuple:
-        try:
-            with open(secrets_yaml_path, 'r') as stream:
-                secrets = yaml.safe_load(stream)
-        except yaml.YAMLError as exc:
-            raise ConfigError(f"Error reading secrets file {secrets_yaml_path}: {exc}")
-        except FileNotFoundError:
-            raise ConfigError(f"Secrets file not found: {secrets_yaml_path}")
+    @classmethod
+    def _validate_experience_levels(cls, experience_levels: dict, config_path: Path):
+        """Ensure experience levels are booleans."""
+        for level in cls.EXPERIENCE_LEVELS:
+            if not isinstance(experience_levels.get(level), bool):
+                raise ConfigError(
+                    f"Experience level '{level}' must be a boolean in {config_path}"
+                )
 
-        mandatory_secrets = ['email', 'password', 'openai_api_key']
+    @classmethod
+    def _validate_job_types(cls, job_types: dict, config_path: Path):
+        """Ensure job types are booleans."""
+        for job_type in cls.JOB_TYPES:
+            if not isinstance(job_types.get(job_type), bool):
+                raise ConfigError(
+                    f"Job type '{job_type}' must be a boolean in {config_path}"
+                )
+
+    @classmethod
+    def _validate_date_filters(cls, date_filters: dict, config_path: Path):
+        """Ensure date filters are booleans."""
+        for date_filter in cls.DATE_FILTERS:
+            if not isinstance(date_filters.get(date_filter), bool):
+                raise ConfigError(
+                    f"Date filter '{date_filter}' must be a boolean in {config_path}"
+                )
+
+    @classmethod
+    def _validate_list_of_strings(cls, parameters: dict, keys: list, config_path: Path):
+        """Ensure specified keys are lists of strings."""
+        for key in keys:
+            if not all(isinstance(item, str) for item in parameters[key]):
+                raise ConfigError(
+                    f"'{key}' must be a list of strings in {config_path}"
+                )
+
+    @classmethod
+    def _validate_distance(cls, distance: int, config_path: Path):
+        """Validate the distance value."""
+        if distance not in cls.APPROVED_DISTANCES:
+            raise ConfigError(
+                f"Invalid distance value '{distance}' in {config_path}. Must be one of: {cls.APPROVED_DISTANCES}"
+            )
+
+    @classmethod
+    def _validate_blacklists(cls, parameters: dict, config_path: Path):
+        """Ensure blacklists are lists."""
+        for blacklist in ["company_blacklist", "title_blacklist", "location_blacklist"]:
+            if not isinstance(parameters.get(blacklist), list):
+                raise ConfigError(
+                    f"'{blacklist}' must be a list in {config_path}"
+                )
+            if parameters[blacklist] is None:
+                parameters[blacklist] = []
+
+    @staticmethod
+    def validate_secrets(secrets_yaml_path: Path) -> str:
+        """Validate the secrets YAML file and retrieve the LLM API key."""
+        secrets = ConfigValidator.load_yaml(secrets_yaml_path)
+        mandatory_secrets = ["llm_api_key"]
 
         for secret in mandatory_secrets:
             if secret not in secrets:
-                raise ConfigError(f"Missing secret in file {secrets_yaml_path}: {secret}")
-           
-        if not ConfigValidator.validate_email(secrets['email']):
-            raise ConfigError(f"Invalid email format in secrets file {secrets_yaml_path}.")
-        if not secrets['password']:
-            raise ConfigError(f"Password cannot be empty in secrets file {secrets_yaml_path}.")
-        if not secrets['openai_api_key']:
-            raise ConfigError(f"OpenAI API key cannot be empty in secrets file {secrets_yaml_path}.")
+                raise ConfigError(f"Missing secret '{secret}' in {secrets_yaml_path}")
 
-        return secrets['email'], str(secrets['password']), secrets['openai_api_key']
+            if not secrets[secret]:
+                raise ConfigError(f"Secret '{secret}' cannot be empty in {secrets_yaml_path}")
+
+        return secrets["llm_api_key"]
+
 
 class FileManager:
-    @staticmethod
-    def find_file(name_containing: str, with_extension: str, at_path: Path) -> Path:
-        for file in at_path.iterdir():
-            if name_containing.lower() in file.name.lower() and file.suffix.lower() == with_extension.lower():
-                return file
-        return None
+    """Handles file system operations and validations."""
+
+    REQUIRED_FILES = [SECRETS_YAML, WORK_PREFERENCES_YAML, PLAIN_TEXT_RESUME_YAML]
 
     @staticmethod
-    def validate_data_folder(app_data_folder: Path) -> tuple:
-        if not app_data_folder.exists() or not app_data_folder.is_dir():
+    def validate_data_folder(app_data_folder: Path) -> Tuple[Path, Path, Path, Path]:
+        """Validate the existence of the data folder and required files."""
+        if not app_data_folder.is_dir():
             raise FileNotFoundError(f"Data folder not found: {app_data_folder}")
 
-        secrets_file = app_data_folder / 'secrets.yaml'
-        config_file = app_data_folder / 'config.yaml'
-        plain_text_resume_file = app_data_folder / 'plain_text_resume.yaml'
-        
-        missing_files = []
-        if not config_file.exists():
-            missing_files.append('config.yaml')
-        if not plain_text_resume_file.exists():
-            missing_files.append('plain_text_resume.yaml')
-        
+        missing_files = [file for file in FileManager.REQUIRED_FILES if not (app_data_folder / file).exists()]
         if missing_files:
-            raise FileNotFoundError(f"Missing files in the data folder: {', '.join(missing_files)}")
-        
-        output_folder = app_data_folder / 'output'
+            raise FileNotFoundError(f"Missing files in data folder: {', '.join(missing_files)}")
+
+        output_folder = app_data_folder / "output"
         output_folder.mkdir(exist_ok=True)
-        return secrets_file, config_file, plain_text_resume_file, output_folder
+
+        return (
+            app_data_folder / SECRETS_YAML,
+            app_data_folder / WORK_PREFERENCES_YAML,
+            app_data_folder / PLAIN_TEXT_RESUME_YAML,
+            output_folder,
+        )
 
     @staticmethod
-    def file_paths_to_dict(resume_file: Path | None, plain_text_resume_file: Path) -> dict:
+    def get_uploads(plain_text_resume_file: Path) -> Dict[str, Path]:
+        """Convert resume file paths to a dictionary."""
         if not plain_text_resume_file.exists():
             raise FileNotFoundError(f"Plain text resume file not found: {plain_text_resume_file}")
-        
-        result = {'plainTextResume': plain_text_resume_file}
-        
-        if resume_file is not None:
-            if not resume_file.exists():
-                raise FileNotFoundError(f"Resume file not found: {resume_file}")
-            result['resume'] = resume_file
-        
-        return result
 
-def init_browser():
+        uploads = {"plainTextResume": plain_text_resume_file}
+
+        return uploads
+
+
+def create_cover_letter(parameters: dict, llm_api_key: str):
+    """
+    Logic to create a CV.
+    """
     try:
-        options = chromeBrowserOptions()
-        service = ChromeService(ChromeDriverManager().install())
-        return webdriver.Chrome(service=service, options=options)
+        logger.info("Generating a CV based on provided parameters.")
+
+        # Carica il resume in testo semplice
+        with open(parameters["uploads"]["plainTextResume"], "r", encoding="utf-8") as file:
+            plain_text_resume = file.read()
+
+        style_manager = StyleManager()
+        available_styles = style_manager.get_styles()
+
+        if not available_styles:
+            logger.warning("No styles available. Proceeding without style selection.")
+        else:
+            # Present style choices to the user
+            choices = style_manager.format_choices(available_styles)
+            questions = [
+                inquirer.List(
+                    "style",
+                    message="Select a style for the resume:",
+                    choices=choices,
+                )
+            ]
+            style_answer = inquirer.prompt(questions)
+            if style_answer and "style" in style_answer:
+                selected_choice = style_answer["style"]
+                for style_name, (file_name, author_link) in available_styles.items():
+                    if selected_choice.startswith(style_name):
+                        style_manager.set_selected_style(style_name)
+                        logger.info(f"Selected style: {style_name}")
+                        break
+            else:
+                logger.warning("No style selected. Proceeding with default style.")
+        questions = [
+    inquirer.Text('job_url', message="Please enter the URL of the job description:")
+        ]
+        answers = inquirer.prompt(questions)
+        job_url = answers.get('job_url')
+        resume_generator = ResumeGenerator()
+        resume_object = Resume(plain_text_resume)
+        driver = init_browser()
+        resume_generator.set_resume_object(resume_object)
+        resume_facade = ResumeFacade(            
+            api_key=llm_api_key,
+            style_manager=style_manager,
+            resume_generator=resume_generator,
+            resume_object=resume_object,
+            output_path=Path("data_folder/output"),
+        )
+        resume_facade.set_driver(driver)
+        resume_facade.link_to_job(job_url)
+        result_base64, suggested_name = resume_facade.create_cover_letter()         
+
+        # Decodifica Base64 in dati binari
+        try:
+            pdf_data = base64.b64decode(result_base64)
+        except base64.binascii.Error as e:
+            logger.error("Error decoding Base64: %s", e)
+            raise
+
+        # Definisci il percorso della cartella di output utilizzando `suggested_name`
+        output_dir = Path(parameters["outputFileDirectory"]) / suggested_name
+
+        # Crea la cartella se non esiste
+        try:
+            output_dir.mkdir(parents=True, exist_ok=True)
+            logger.info(f"Cartella di output creata o già esistente: {output_dir}")
+        except IOError as e:
+            logger.error("Error creating output directory: %s", e)
+            raise
+        
+        output_path = output_dir / "cover_letter_tailored.pdf"
+        try:
+            with open(output_path, "wb") as file:
+                file.write(pdf_data)
+            logger.info(f"CV salvato in: {output_path}")
+        except IOError as e:
+            logger.error("Error writing file: %s", e)
+            raise
     except Exception as e:
-        raise RuntimeError(f"Failed to initialize browser: {str(e)}")
+        logger.exception(f"An error occurred while creating the CV: {e}")
+        raise
 
-def create_and_run_bot(email: str, password: str, parameters: dict, openai_api_key: str):
+
+def create_resume_pdf_job_tailored(parameters: dict, llm_api_key: str):
+    """
+    Logic to create a CV.
+    """
     try:
-        browser = init_browser()
-        login_component = LinkedInAuthenticator(browser)
-        apply_component = LinkedInJobManager(browser)
-        gpt_answerer_component = GPTAnswerer(openai_api_key)
-        with open(parameters['uploads']['plainTextResume'], "r") as file:
-            plain_text_resume_file = file.read()
-        resume_object = Resume(plain_text_resume_file)
-        bot = LinkedInBotFacade(login_component, apply_component)
-        bot.set_secrets(email, password)
-        bot.set_resume(resume_object)
-        bot.set_gpt_answerer(gpt_answerer_component)
-        bot.set_parameters(parameters)
-        bot.start_login()
-        bot.start_apply()
+        logger.info("Generating a CV based on provided parameters.")
+
+        # Carica il resume in testo semplice
+        with open(parameters["uploads"]["plainTextResume"], "r", encoding="utf-8") as file:
+            plain_text_resume = file.read()
+
+        style_manager = StyleManager()
+        available_styles = style_manager.get_styles()
+
+        if not available_styles:
+            logger.warning("No styles available. Proceeding without style selection.")
+        else:
+            # Present style choices to the user
+            choices = style_manager.format_choices(available_styles)
+            questions = [
+                inquirer.List(
+                    "style",
+                    message="Select a style for the resume:",
+                    choices=choices,
+                )
+            ]
+            style_answer = inquirer.prompt(questions)
+            if style_answer and "style" in style_answer:
+                selected_choice = style_answer["style"]
+                for style_name, (file_name, author_link) in available_styles.items():
+                    if selected_choice.startswith(style_name):
+                        style_manager.set_selected_style(style_name)
+                        logger.info(f"Selected style: {style_name}")
+                        break
+            else:
+                logger.warning("No style selected. Proceeding with default style.")
+        questions = [inquirer.Text('job_url', message="Please enter the URL of the job description:")]
+        answers = inquirer.prompt(questions)
+        job_url = answers.get('job_url')
+        resume_generator = ResumeGenerator()
+        resume_object = Resume(plain_text_resume)
+        driver = init_browser()
+        resume_generator.set_resume_object(resume_object)
+        resume_facade = ResumeFacade(            
+            api_key=llm_api_key,
+            style_manager=style_manager,
+            resume_generator=resume_generator,
+            resume_object=resume_object,
+            output_path=Path("data_folder/output"),
+        )
+        resume_facade.set_driver(driver)
+        resume_facade.link_to_job(job_url)
+        result_base64, suggested_name = resume_facade.create_resume_pdf_job_tailored()         
+
+        # Decodifica Base64 in dati binari
+        try:
+            pdf_data = base64.b64decode(result_base64)
+        except base64.binascii.Error as e:
+            logger.error("Error decoding Base64: %s", e)
+            raise
+
+        # Definisci il percorso della cartella di output utilizzando `suggested_name`
+        output_dir = Path(parameters["outputFileDirectory"]) / suggested_name
+
+        # Crea la cartella se non esiste
+        try:
+            output_dir.mkdir(parents=True, exist_ok=True)
+            logger.info(f"Cartella di output creata o già esistente: {output_dir}")
+        except IOError as e:
+            logger.error("Error creating output directory: %s", e)
+            raise
+        
+        output_path = output_dir / "resume_tailored.pdf"
+        try:
+            with open(output_path, "wb") as file:
+                file.write(pdf_data)
+            logger.info(f"CV salvato in: {output_path}")
+        except IOError as e:
+            logger.error("Error writing file: %s", e)
+            raise
     except Exception as e:
-        raise RuntimeError(f"Error running the bot: {str(e)}")
+        logger.exception(f"An error occurred while creating the CV: {e}")
+        raise
 
-@click.command()
-@click.option('--resume', type=click.Path(exists=True, file_okay=True, dir_okay=False, path_type=Path), help="Path to the resume PDF file")
-def main(resume: Path = None):
+
+def create_resume_pdf(parameters: dict, llm_api_key: str):
+    """
+    Logic to create a CV.
+    """
     try:
+        logger.info("Generating a CV based on provided parameters.")
+
+        # Load the plain text resume
+        with open(parameters["uploads"]["plainTextResume"], "r", encoding="utf-8") as file:
+            plain_text_resume = file.read()
+
+        # Initialize StyleManager
+        style_manager = StyleManager()
+        available_styles = style_manager.get_styles()
+
+        if not available_styles:
+            logger.warning("No styles available. Proceeding without style selection.")
+        else:
+            # Present style choices to the user
+            choices = style_manager.format_choices(available_styles)
+            questions = [
+                inquirer.List(
+                    "style",
+                    message="Select a style for the resume:",
+                    choices=choices,
+                )
+            ]
+            style_answer = inquirer.prompt(questions)
+            if style_answer and "style" in style_answer:
+                selected_choice = style_answer["style"]
+                for style_name, (file_name, author_link) in available_styles.items():
+                    if selected_choice.startswith(style_name):
+                        style_manager.set_selected_style(style_name)
+                        logger.info(f"Selected style: {style_name}")
+                        break
+            else:
+                logger.warning("No style selected. Proceeding with default style.")
+
+        # Initialize the Resume Generator
+        resume_generator = ResumeGenerator()
+        resume_object = Resume(plain_text_resume)
+        driver = init_browser()
+        resume_generator.set_resume_object(resume_object)
+
+        # Create the ResumeFacade
+        resume_facade = ResumeFacade(
+            api_key=llm_api_key,
+            style_manager=style_manager,
+            resume_generator=resume_generator,
+            resume_object=resume_object,
+            output_path=Path("data_folder/output"),
+        )
+        resume_facade.set_driver(driver)
+        result_base64 = resume_facade.create_resume_pdf()
+
+        # Decode Base64 to binary data
+        try:
+            pdf_data = base64.b64decode(result_base64)
+        except base64.binascii.Error as e:
+            logger.error("Error decoding Base64: %s", e)
+            raise
+
+        # Define the output directory using `suggested_name`
+        output_dir = Path(parameters["outputFileDirectory"])
+
+        # Write the PDF file
+        output_path = output_dir / "resume_base.pdf"
+        try:
+            with open(output_path, "wb") as file:
+                file.write(pdf_data)
+            logger.info(f"Resume saved at: {output_path}")
+        except IOError as e:
+            logger.error("Error writing file: %s", e)
+            raise
+    except Exception as e:
+        logger.exception(f"An error occurred while creating the CV: {e}")
+        raise
+
+        
+def handle_inquiries(selected_actions: List[str], parameters: dict, llm_api_key: str):
+    """
+    Decide which function to call based on the selected user actions.
+
+    :param selected_actions: List of actions selected by the user.
+    :param parameters: Configuration parameters dictionary.
+    :param llm_api_key: API key for the language model.
+    """
+    try:
+        if selected_actions:
+            if "Generate Resume" == selected_actions:
+                logger.info("Crafting a standout professional resume...")
+                create_resume_pdf(parameters, llm_api_key)
+                
+            if "Generate Resume Tailored for Job Description" == selected_actions:
+                logger.info("Customizing your resume to enhance your job application...")
+                create_resume_pdf_job_tailored(parameters, llm_api_key)
+                
+            if "Generate Tailored Cover Letter for Job Description" == selected_actions:
+                logger.info("Designing a personalized cover letter to enhance your job application...")
+                create_cover_letter(parameters, llm_api_key)
+
+        else:
+            logger.warning("No actions selected. Nothing to execute.")
+    except Exception as e:
+        logger.exception(f"An error occurred while handling inquiries: {e}")
+        raise
+
+def prompt_user_action() -> str:
+    """
+    Use inquirer to ask the user which action they want to perform.
+
+    :return: Selected action.
+    """
+    try:
+        questions = [
+            inquirer.List(
+                'action',
+                message="Select the action you want to perform:",
+                choices=[
+                    "Generate Resume",
+                    "Generate Resume Tailored for Job Description",
+                    "Generate Tailored Cover Letter for Job Description",
+                ],
+            ),
+        ]
+        answer = inquirer.prompt(questions)
+        if answer is None:
+            print("No answer provided. The user may have interrupted.")
+            return ""
+        return answer.get('action', "")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return ""
+
+
+def main():
+    """Main entry point for the AIHawk Job Application Bot."""
+    try:
+        # Define and validate the data folder
         data_folder = Path("data_folder")
         secrets_file, config_file, plain_text_resume_file, output_folder = FileManager.validate_data_folder(data_folder)
-        parameters = ConfigValidator.validate_config(config_file)
-        email, password, openai_api_key = ConfigValidator.validate_secrets(secrets_file)
-        parameters['uploads'] = FileManager.file_paths_to_dict(resume, plain_text_resume_file)
-        parameters['outputFileDirectory'] = output_folder
 
-        create_and_run_bot(email, password, parameters, openai_api_key)
+        # Validate configuration and secrets
+        config = ConfigValidator.validate_config(config_file)
+        llm_api_key = ConfigValidator.validate_secrets(secrets_file)
+
+        # Prepare parameters
+        config["uploads"] = FileManager.get_uploads(plain_text_resume_file)
+        config["outputFileDirectory"] = output_folder
+
+        # Interactive prompt for user to select actions
+        selected_actions = prompt_user_action()
+
+        # Handle selected actions and execute them
+        handle_inquiries(selected_actions, config, llm_api_key)
+
     except ConfigError as ce:
-        print(f"Configuration error: {str(ce)}")
-        print("Refer to the configuration guide for troubleshooting: https://github.com/feder-cr/LinkedIn_AIHawk_automatic_job_application/blob/main/readme.md#configuration")
+        logger.error(f"Configuration error: {ce}")
+        logger.error(
+            "Refer to the configuration guide for troubleshooting: "
+            "https://github.com/feder-cr/Auto_Jobs_Applier_AIHawk?tab=readme-ov-file#configuration"
+        )
     except FileNotFoundError as fnf:
-        print(f"File not found: {str(fnf)}")
-        print("Ensure all required files are present in the data folder.")
-        print("Refer to the file setup guide: https://github.com/feder-cr/LinkedIn_AIHawk_automatic_job_application/blob/main/readme.md#configuration")
+        logger.error(f"File not found: {fnf}")
+        logger.error("Ensure all required files are present in the data folder.")
     except RuntimeError as re:
-        print(f"Runtime error: {str(re)}")
-        print("Check browser setup and other runtime issues.")
-        print("Refer to the configuration and troubleshooting guide: https://github.com/feder-cr/LinkedIn_AIHawk_automatic_job_application/blob/main/readme.md#configuration")
+        logger.error(f"Runtime error: {re}")
+        logger.debug(traceback.format_exc())
     except Exception as e:
-        print(f"An unexpected error occurred: {str(e)}")
-        print("Refer to the general troubleshooting guide: https://github.com/feder-cr/LinkedIn_AIHawk_automatic_job_application/blob/main/readme.md#configuration")
+        logger.exception(f"An unexpected error occurred: {e}")
+
 
 if __name__ == "__main__":
     main()

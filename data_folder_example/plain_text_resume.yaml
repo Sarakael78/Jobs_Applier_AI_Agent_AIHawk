@@ -1,128 +1,141 @@
 personal_information:
-  name: "Mario"
-  surname: "Rossi"
-  dateOfBirth: "15/09/1988"
-  country: "Italy"
-  city: "Milan"
-  address: "Via Montenapoleone 10, 20121 Milan"
-  phonePrefix: "+39"
-  phone: "3351234567"
-  email: "mario.rossi@techcode.it"
-  github: "https://github.com/mario-rossi-dev"
-  linkedin: "https://www.linkedin.com/in/mario-rossi-developer/"
-
-self_identification:
-  gender: "Male"
-  pronouns: "He/Him"
-  veteran: false
-  disability: false
-  ethnicity: "Mediterranean"
-
-legal_authorization:
-  euWorkAuthorization: true
-  usWorkAuthorization: false
-  requiresUsVisa: true
-  legallyAllowedToWorkInUs: false
-  requiresUsSponsorship: true
-  requiresEuVisa: false
-  legallyAllowedToWorkInEu: true
-  requiresEuSponsorship: false
-
-work_preferences:
-  remoteWork: true
-  inPersonWork: true
-  openToRelocation: true
-  willingToCompleteAssessments: true
-  willingToUndergoDrugTests: true
-  willingToUndergoBackgroundChecks: true
+  name: "solid"
+  surname: "snake"
+  date_of_birth: "12/01/1861"
+  country: "Ireland"
+  city: "Dublin"
+  zip_code: "520123"
+  address: "12 Fox road"
+  phone_prefix: "+1"
+  phone: "7819117091"
+  email: "hi@gmail.com"
+  github: "https://github.com/lol"
+  linkedin: "https://www.linkedin.com/in/thezucc/"
+  
 
 education_details:
-  - degree: "Master"
-    university: "Politecnico di Milano"
-    gpa: "3.8/4"
-    graduationYear: "2012"
-    fieldOfStudy: "Computer Engineering"
-    skillsAcquired:
-      artificialIntelligence: "4"
-      dataScience: "3"
-      cloudComputing: "3"
+  - education_level: "Master's Degree"
+    institution: "Bob academy"
+    field_of_study: "Bobs Engineering"
+    final_evaluation_grade: "4.0"
+    year_of_completion: "2023"
+    start_date: "2022"
+    additional_info:
+      exam:
+        Algorithms: "A"
+        Linear Algebra: "A"
+        Database Systems: "A"
+        Operating Systems: "A-"
+        Web Development: "A"
 
 experience_details:
-  - position: "Senior Software Engineer"
-    company: "TechInnovate S.p.A."
-    employmentPeriod: "06/2018 - Present"
+  - position: "X"
+    company: "Y."
+    employment_period: "06/2019 - Present"
+    location: "San Francisco, CA"
+    industry: "Technology"
+    key_responsibilities:
+      - responsibility: "Developed web applications using React and Node.js"
+      - responsibility: "Collaborated with cross-functional teams to design and implement new features"
+      - responsibility: "Troubleshot and resolved complex software issues"
+    skills_acquired:
+      - "React"
+      - "Node.js"
+      - "Software Troubleshooting"
+  - position: "Software Developer"
+    company: "Innovatech"
+    employment_period: "06/2015 - 12/2017"
     location: "Milan, Italy"
-    industry: "FinTech"
-    keyResponsibilities:
-      responsibility1: "Led development of real-time trading algorithm, improving transaction speed by 40%"
-      responsibility2: "Implemented CI/CD pipeline, reducing deployment time from days to hours"
-      responsibility3: "Mentored junior developers, increasing team productivity by 25% over 6 months"
-    skillsAcquired:
-      java: "5"
-      springBoot: "4"
-      kubernetes: "3"
-      aws: "4"
-      microservices: "4"
-      agileMethodologies: "5"
-
+    industry: "Technology"
+    key_responsibilities:
+      - responsibility: "Developed and maintained web applications using modern technologies"
+      - responsibility: "Collaborated with UX/UI designers to enhance user experience"
+      - responsibility: "Implemented automated testing procedures to ensure code quality"
+    skills_acquired:
+      - "Web development"
+      - "User experience design"
+      - "Automated testing"
+  - position: "Junior Developer"
+    company: "StartUp Hub"
+    employment_period: "01/2014 - 05/2015"
+    location: "Florence, Italy"
+    industry: "Startups"
+    key_responsibilities:
+      - responsibility: "Assisted in the development of mobile applications and web platforms"
+      - responsibility: "Participated in code reviews and contributed to software design discussions"
+      - responsibility: "Resolved bugs and implemented feature enhancements"
+    skills_acquired:
+      - "Mobile app development"
+      - "Code reviews"
+      - "Bug fixing"
 projects:
-  project1: "Developed a high-frequency trading platform using Java and Spring Boot, processing over 1 million transactions per second"
-  project2: "Led the migration of legacy systems to a microservices architecture, improving system reliability by 99.99%"
+  - name: "X"
+    description: "Y blah blah blah "
+    link: "https://github.com/haveagoodday"
 
-availability:
-  noticePeriod: "3 months"
 
-salary_expectations:
-  salaryRangeUSD: "90000"
+
+achievements:
+  - name: "Employee of the Month"
+    description: "Recognized for exceptional performance and contributions to the team."
+  - name: "Hackathon Winner"
+    description: "Won first place in a national hackathon competition."
 
 certifications:
-  - "AWS Certified Solutions Architect"
-  - "Oracle Certified Professional, Java SE 11 Developer"
-  - "Certified Scrum Master"
-  
-skills:
-  leadership: 6
-  problemSolving: 4
-  criticalThinking: 3
-  adaptability: 2
-  perfectionism: 2
-  blockchain: 3
-  iot: 3
-  python: 3
-  fullStackDevelopment: 3
-  databaseManagement: 3
-  versionControl: 3
-  agileMethodologies: 2
-  devOpsPractices: 2
-  algorithmDesign: 3
-  mobileAppDevelopment: 2
-  softwareArchitecture: 3
-  teamCollaboration: 2
-  documentation: 2
-  java: 3
-  cSharp: 3
-  c: 3
-  cPlusPlus: 3
-  javascript: 3
-  php: 3
-  sql: 3
-  noSql: 3
-  mysql: 3
-  firebase: 3
-  continuousIntegration: 2
-  continuousDeployment: 2
-  optimization: 3
+  - name: "Certified Scrum Master"
+    description: "Recognized certification for proficiency in Agile methodologies and Scrum framework."
+  - name: "AWS Certified Solutions Architect"
+    description: "Certification demonstrating expertise in designing, deploying, and managing applications on AWS."
 
 languages:
-  - language: "Italian"
-    proficiency: "Native"
   - language: "English"
     proficiency: "Fluent"
   - language: "Spanish"
     proficiency: "Intermediate"
 
 interests:
-  - "Open Source Contributing"
   - "Machine Learning"
-  - "Hiking"
-  - "Chess"
+  - "Cybersecurity"
+  - "Open Source Projects"
+  - "Digital Marketing"
+  - "Entrepreneurship"
+
+availability:
+  notice_period: "2 weeks"
+
+salary_expectations:
+  salary_range_usd: "90000 - 110000"
+
+self_identification:
+  gender: "Female"
+  pronouns: "She/Her"
+  veteran: "No"
+  disability: "No"
+  ethnicity: "Asian"
+
+legal_authorization:
+  eu_work_authorization: "Yes"
+  us_work_authorization: "Yes"
+  requires_us_visa: "No"
+  requires_us_sponsorship: "Yes"
+  requires_eu_visa: "No"
+  legally_allowed_to_work_in_eu: "Yes"
+  legally_allowed_to_work_in_us: "Yes"
+  requires_eu_sponsorship: "No"
+  canada_work_authorization: "Yes"
+  requires_canada_visa: "No"
+  legally_allowed_to_work_in_canada: "Yes"
+  requires_canada_sponsorship: "No"
+  uk_work_authorization: "Yes"
+  requires_uk_visa: "No"
+  legally_allowed_to_work_in_uk: "Yes"
+  requires_uk_sponsorship: "No"
+
+
+work_preferences:
+  remote_work: "Yes"
+  in_person_work: "Yes"
+  open_to_relocation: "Yes"
+  willing_to_complete_assessments: "Yes"
+  willing_to_undergo_drug_tests: "Yes"
+  willing_to_undergo_background_checks: "Yes"
